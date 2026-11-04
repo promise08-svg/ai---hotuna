@@ -7,37 +7,149 @@
 <title>AI Hotuna</title>
 <script src="https://js.puter.com/v2/"></script>
 <style>
-  body { font-family: sans-serif; background:#111; color:#fff; margin:0; padding:20px; text-align:center; }
-  h1 { font-size:24px; }
-  textarea { width:100%; max-width:400px; height:90px; padding:10px; border-radius:8px; border:none; font-size:16px; }
-  button { margin-top:12px; padding:12px 28px; font-size:16px; border:none; border-radius:8px; background:#4f8cff; color:#fff; }
-  #status { margin-top:15px; }
-  #out img { max-width:100%; margin-top:20px; border-radius:10px; }
+  :root { --bg:#212121; --panel:#2f2f2f; --text:#ececec; --muted:#9b9b9b; --accent:#4f8cff; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); display:flex; flex-direction:column; height:100dvh; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #333; }
+  header h1 { font-size:18px; margin:0; }
+  .actions { display:flex; gap:8px; }
+  .actions button { background:var(--panel); color:var(--text); border:none; padding:8px 12px; border-radius:8px; font-size:14px; }
+  #chat { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
+  .msg { max-width:85%; padding:12px 14px; border-radius:16px; line-height:1.4; word-wrap:break-word; }
+  .user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+  .bot { align-self:flex-start; background:var(--panel); border-bottom-left-radius:4px; }
+  .bot img { max-width:100%; border-radius:10px; display:block; margin-top:8px; }
+  .dl { display:inline-block; margin-top:8px; color:var(--accent); font-size:14px; text-decoration:none; }
+  .hint { color:var(--muted); font-size:12px; text-align:center; padding:0 16px 6px; }
+  form { display:flex; gap:8px; padding:10px 12px 14px; }
+  textarea { flex:1; resize:none; height:48px; max-height:120px; padding:12px; border-radius:14px; border:none; background:var(--panel); color:var(--text); font-size:16px; font-family:inherit; }
+  form button { width:48px; height:48px; border:none; border-radius:50%; background:var(--accent); color:#fff; font-size:20px; }
+  form button:disabled { opacity:.5; }
 </style>
 </head>
 <body>
-  <h1>Yi Hoto da AI</h1>
-  <textarea id="prompt" placeholder="Rubuta abin da kake so a yi hoton sa (a Turanci)..."></textarea><br>
-  <button id="btn">Generate</button>
-  <div id="status"></div>
-  <div id="out"></div>
+  <header>
+    <h1 id="title"></h1>
+    <div class="actions">
+      <button id="newChat"></button>
+      <button id="langBtn"></button>
+    </div>
+  </header>
+
+  <div id="chat"></div>
+  <div class="hint" id="hint"></div>
+
+  <form id="form">
+    <textarea id="prompt" rows="1"></textarea>
+    <button id="send" type="submit">➤</button>
+  </form>
 
 <script>
-document.getElementById("btn").onclick = async function () {
-  const p = document.getElementById("prompt").value.trim();
-  if (!p) return;
-  const status = document.getElementById("status");
-  const out = document.getElementById("out");
-  status.textContent = "Ana yi... (idan ya nemi ka shiga da asusun Puter, ka amince)";
-  try {
-    const img = await puter.ai.txt2img(p);
-    out.innerHTML = "";
-    out.appendChild(img);
-    status.textContent = "";
-  } catch (e) {
-    status.textContent = "An samu matsala, sake gwadawa.";
+const T = {
+  ha: {
+    title: "AI Hotuna",
+    welcome: "Sannu! Ka rubuta abin da kake so a yi maka hoton sa.",
+    placeholder: "Rubuta bayani...",
+    making: "Ana yin hoton...",
+    error: "An samu matsala. Sake gwadawa.",
+    download: "Sauke hoto",
+    newchat: "Sabo",
+    hint: "Shawara: Turanci yana ba da sakamako mafi kyau.",
+    lang: "English"
+  },
+  en: {
+    title: "AI Images",
+    welcome: "Hello! Describe the image you want me to create.",
+    placeholder: "Describe your image...",
+    making: "Creating your image...",
+    error: "Something went wrong. Please try again.",
+    download: "Download image",
+    newchat: "New",
+    hint: "Tip: English prompts give the best results.",
+    lang: "Hausa"
   }
 };
+
+let lang = "ha";
+try { lang = localStorage.getItem("lang") || "ha"; } catch (e) {}
+
+const chat = document.getElementById("chat");
+const promptEl = document.getElementById("prompt");
+const sendBtn = document.getElementById("send");
+
+function addMsg(cls, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+
+function applyLang() {
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("newChat").textContent = t.newchat;
+  document.getElementById("langBtn").textContent = t.lang;
+  document.getElementById("hint").textContent = t.hint;
+  promptEl.placeholder = t.placeholder;
+  const w = document.getElementById("welcome");
+  if (w) w.textContent = t.welcome;
+}
+
+function resetChat() {
+  chat.innerHTML = "";
+  const w = addMsg("bot", T[lang].welcome);
+  w.id = "welcome";
+}
+
+document.getElementById("langBtn").onclick = function () {
+  lang = lang === "ha" ? "en" : "ha";
+  try { localStorage.setItem("lang", lang); } catch (e) {}
+  applyLang();
+};
+
+document.getElementById("newChat").onclick = function () {
+  resetChat();
+  applyLang();
+};
+
+promptEl.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("form").requestSubmit();
+  }
+});
+
+document.getElementById("form").onsubmit = async function (e) {
+  e.preventDefault();
+  const p = promptEl.value.trim();
+  if (!p) return;
+  promptEl.value = "";
+  addMsg("user", p);
+  const bot = addMsg("bot", T[lang].making);
+  sendBtn.disabled = true;
+  try {
+    const img = await puter.ai.txt2img(p);
+    bot.textContent = "";
+    bot.appendChild(img);
+    const a = document.createElement("a");
+    a.className = "dl";
+    a.href = img.src;
+    a.download = "hoto.png";
+    a.textContent = "⬇ " + T[lang].download;
+    bot.appendChild(a);
+  } catch (err) {
+    bot.textContent = T[lang].error;
+  }
+  sendBtn.disabled = false;
+  chat.scrollTop = chat.scrollHeight;
+};
+
+resetChat();
+applyLang();
 </script>
 </body>
 </html>
