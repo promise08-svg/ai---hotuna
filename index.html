@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ha">
 <head>
@@ -16,13 +15,16 @@
   .actions { display:flex; gap:8px; }
   .actions button { background:var(--panel); color:var(--text); border:none; padding:8px 12px; border-radius:8px; font-size:14px; }
   #chat { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
-  .msg { max-width:85%; padding:12px 14px; border-radius:16px; line-height:1.4; word-wrap:break-word; }
+  .msg { max-width:85%; padding:12px 14px; border-radius:16px; line-height:1.45; word-wrap:break-word; white-space:pre-wrap; }
   .user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
   .bot { align-self:flex-start; background:var(--panel); border-bottom-left-radius:4px; }
   .bot img { max-width:100%; border-radius:10px; display:block; margin-top:8px; }
   .dl { display:inline-block; margin-top:8px; color:var(--accent); font-size:14px; text-decoration:none; }
-  .hint { color:var(--muted); font-size:12px; text-align:center; padding:0 16px 6px; }
-  form { display:flex; gap:8px; padding:10px 12px 14px; }
+  .modes { display:flex; gap:8px; padding:8px 12px 0; }
+  .modes button { flex:1; padding:10px; border:none; border-radius:10px; background:var(--panel); color:var(--muted); font-size:15px; }
+  .modes button.active { background:var(--accent); color:#fff; }
+  .hint { color:var(--muted); font-size:12px; text-align:center; padding:6px 16px 0; }
+  form { display:flex; gap:8px; padding:8px 12px 14px; }
   textarea { flex:1; resize:none; height:48px; max-height:120px; padding:12px; border-radius:14px; border:none; background:var(--panel); color:var(--text); font-size:16px; font-family:inherit; }
   form button { width:48px; height:48px; border:none; border-radius:50%; background:var(--accent); color:#fff; font-size:20px; }
   form button:disabled { opacity:.5; }
@@ -38,6 +40,11 @@
   </header>
 
   <div id="chat"></div>
+
+  <div class="modes">
+    <button id="modeImg" type="button"></button>
+    <button id="modeChat" type="button"></button>
+  </div>
   <div class="hint" id="hint"></div>
 
   <form id="form">
@@ -49,30 +56,43 @@
 const T = {
   ha: {
     title: "AI Hotuna",
-    welcome: "Sannu! Ka rubuta abin da kake so a yi maka hoton sa.",
-    placeholder: "Rubuta bayani...",
+    welcome: "Sannu! Zaɓi 🖼 Hoto don yin hoto, ko 💬 Tattaunawa don yin tambaya.",
+    phImg: "Rubuta bayanin hoton da kake so...",
+    phChat: "Yi tambaya ko rubuta saƙo...",
+    hintImg: "Shawara: Turanci yana ba da hotuna mafi kyau.",
+    hintChat: "Zan amsa maka da Hausa ko Turanci.",
     making: "Ana yin hoton...",
+    thinking: "Ina tunani...",
     error: "An samu matsala. Sake gwadawa.",
     download: "Sauke hoto",
     newchat: "Sabo",
-    hint: "Shawara: Turanci yana ba da sakamako mafi kyau.",
+    modeImg: "🖼 Hoto",
+    modeChat: "💬 Tattaunawa",
     lang: "English"
   },
   en: {
     title: "AI Images",
-    welcome: "Hello! Describe the image you want me to create.",
-    placeholder: "Describe your image...",
+    welcome: "Hello! Choose 🖼 Image to create a picture, or 💬 Chat to ask a question.",
+    phImg: "Describe the image you want...",
+    phChat: "Ask a question or write a message...",
+    hintImg: "Tip: English prompts give the best images.",
+    hintChat: "I can answer in Hausa or English.",
     making: "Creating your image...",
+    thinking: "Thinking...",
     error: "Something went wrong. Please try again.",
     download: "Download image",
     newchat: "New",
-    hint: "Tip: English prompts give the best results.",
+    modeImg: "🖼 Image",
+    modeChat: "💬 Chat",
     lang: "Hausa"
   }
 };
 
 let lang = "ha";
+let mode = "img";
 try { lang = localStorage.getItem("lang") || "ha"; } catch (e) {}
+
+let history = [];
 
 const chat = document.getElementById("chat");
 const promptEl = document.getElementById("prompt");
@@ -93,16 +113,31 @@ function applyLang() {
   document.getElementById("title").textContent = t.title;
   document.getElementById("newChat").textContent = t.newchat;
   document.getElementById("langBtn").textContent = t.lang;
-  document.getElementById("hint").textContent = t.hint;
-  promptEl.placeholder = t.placeholder;
+  document.getElementById("modeImg").textContent = t.modeImg;
+  document.getElementById("modeChat").textContent = t.modeChat;
+  document.getElementById("modeImg").className = mode === "img" ? "active" : "";
+  document.getElementById("modeChat").className = mode === "chat" ? "active" : "";
+  promptEl.placeholder = mode === "img" ? t.phImg : t.phChat;
+  document.getElementById("hint").textContent = mode === "img" ? t.hintImg : t.hintChat;
   const w = document.getElementById("welcome");
   if (w) w.textContent = t.welcome;
 }
 
 function resetChat() {
   chat.innerHTML = "";
+  history = [];
   const w = addMsg("bot", T[lang].welcome);
   w.id = "welcome";
+}
+
+function extractText(r) {
+  if (!r) return "";
+  if (typeof r === "string") return r;
+  const c = r.message ? r.message.content : r.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) return c.map(function (x) { return x.text || ""; }).join("");
+  if (r.text) return r.text;
+  return String(r);
 }
 
 document.getElementById("langBtn").onclick = function () {
@@ -110,6 +145,9 @@ document.getElementById("langBtn").onclick = function () {
   try { localStorage.setItem("lang", lang); } catch (e) {}
   applyLang();
 };
+
+document.getElementById("modeImg").onclick = function () { mode = "img"; applyLang(); };
+document.getElementById("modeChat").onclick = function () { mode = "chat"; applyLang(); };
 
 document.getElementById("newChat").onclick = function () {
   resetChat();
@@ -129,21 +167,41 @@ document.getElementById("form").onsubmit = async function (e) {
   if (!p) return;
   promptEl.value = "";
   addMsg("user", p);
-  const bot = addMsg("bot", T[lang].making);
   sendBtn.disabled = true;
-  try {
-    const img = await puter.ai.txt2img(p);
-    bot.textContent = "";
-    bot.appendChild(img);
-    const a = document.createElement("a");
-    a.className = "dl";
-    a.href = img.src;
-    a.download = "hoto.png";
-    a.textContent = "⬇ " + T[lang].download;
-    bot.appendChild(a);
-  } catch (err) {
-    bot.textContent = T[lang].error;
+
+  if (mode === "img") {
+    const bot = addMsg("bot", T[lang].making);
+    try {
+      const img = await puter.ai.txt2img(p);
+      bot.textContent = "";
+      bot.appendChild(img);
+      const a = document.createElement("a");
+      a.className = "dl";
+      a.href = img.src;
+      a.download = "hoto.png";
+      a.textContent = "⬇ " + T[lang].download;
+      bot.appendChild(a);
+    } catch (err) {
+      bot.textContent = T[lang].error;
+    }
+  } else {
+    const bot = addMsg("bot", T[lang].thinking);
+    history.push({ role: "user", content: p });
+    try {
+      const msgs = [{
+        role: "system",
+        content: "You are a helpful assistant. Always reply in the same language the user writes in (Hausa or English). Keep answers clear and well organised."
+      }].concat(history);
+      const r = await puter.ai.chat(msgs);
+      const text = extractText(r) || T[lang].error;
+      bot.textContent = text;
+      history.push({ role: "assistant", content: text });
+    } catch (err) {
+      bot.textContent = T[lang].error;
+      history.pop();
+    }
   }
+
   sendBtn.disabled = false;
   chat.scrollTop = chat.scrollHeight;
 };
