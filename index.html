@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ha">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Hotuna</title>
+<style>
+  body { font-family: sans-serif; background:#111; color:#fff; margin:0; padding:20px; text-align:center; }
+  h1 { font-size:24px; }
+  textarea { width:100%; max-width:400px; height:90px; padding:10px; border-radius:8px; border:none; font-size:16px; }
+  button { margin-top:12px; padding:12px 28px; font-size:16px; border:none; border-radius:8px; background:#4f8cff; color:#fff; }
+  img { max-width:100%; margin-top:20px; border-radius:10px; }
+  #status { margin-top:15px; }
+</style>
+</head>
+<body>
+  <h1>Yi Hoto da AI</h1>
+  <textarea id="prompt" placeholder="Rubuta abin da kake so a yi hoton sa (a Turanci)..."></textarea><br>
+  <button onclick="generate()">Generate</button>
+  <div id="status"></div>
+  <img id="result" style="display:none">
+
+<script>
+function generate() {
+  const p = document.getElementById("prompt").value.trim();
+  if (!p) return;
+  const img = document.getElementById("result");
+  const status = document.getElementById("status");
+  status.textContent = "Ana yi...";
+  img.style.display = "none";
+  img.onload = () => { status.textContent = ""; img.style.display = "block"; };
+  img.onerror = () => { status.textContent = "An samu matsala, sake gwadawa."; };
+  img.src = "https://image.pollinations.ai/prompt/" + encodeURIComponent(p) + "?seed=" + Date.now();
+}
+</script>
+</body>
+</html>
